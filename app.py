@@ -4,7 +4,7 @@ from transformers import pipeline, AutoModelForTokenClassification, AutoTokenize
 
 app = FastAPI()
 
-# Load model
+# Load model and tokenizer
 model = AutoModelForTokenClassification.from_pretrained("ner_model")
 tokenizer = AutoTokenizer.from_pretrained("ner_model")
 nlp = pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="simple")
@@ -14,8 +14,13 @@ class TextInput(BaseModel):
 
 @app.post("/predict")
 def predict(data: TextInput):
-    result = nlp(data.text)
-    return {"entities": result}
+    raw_result = nlp(data.text)
+
+    # Fix: Convert numpy.float32 to Python float
+    for ent in raw_result:
+        ent["score"] = float(ent["score"])
+
+    return {"entities": raw_result}
 
 @app.get("/")
 def read_root():
